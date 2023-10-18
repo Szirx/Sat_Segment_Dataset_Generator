@@ -131,7 +131,7 @@ The configuration defines how the dataset is supposed to be generated. The struc
 ![Data-Generator](/media/area_definition.png)
 ## Run The SSDG
 After the configuration has been created, the tool can be started with the following command, where `--output_path` defines the location to store the dataset and `--config_path` the path to the configuration created above. 
-You must replace `{{YOUR_APP_ID}}` and `{{YOUR_APP_CODE}}` with your Here-Api credentials, that you can get [here](https://developer.here.com/).
+You must replace `{{YOUR_API_KEY}}` with your Here-Api credentials, that you can get [here](https://developer.here.com/).
 ```
-python3 sat_segment_dataset_generator.py --here_app_id {{YOUR_APP_ID}} --here_app_code {{YOUR_APP_CODE}} --output_path ./dataset --config_path ./config.cfg
+python3 sat_segment_dataset_generator.py --here_apikey {{YOUR_API_KEY}} --output_path ./dataset --config_path ./config.cfg
 ```
