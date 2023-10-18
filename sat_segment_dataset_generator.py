@@ -9,15 +9,14 @@ import urllib.request
 from copy import deepcopy
 
 class SatSegmentDatasetGenerator:
-    def __init__(self, here_app_id=None, here_app_code=None, config=None, output_path=None):
+    def __init__(self, here_apiKey=None, config=None, output_path=None):
         if config is None:
             raise Exception("Please provide a configuration.")
-        if here_app_id is None or here_app_code is None:
+        if here_apiKey is None:
             raise Exception("Please provide your here api credentials.")
         if output_path is None:
             raise Exception("Please provide the ouput path.")
-        self.here_app_id = here_app_id
-        self.here_app_code = here_app_code
+        self.here_apiKey = here_apiKey
         self.config = config
         self.output_path = output_path
         self.here_map_tiles = []
@@ -84,7 +83,7 @@ class SatSegmentDatasetGenerator:
         return int(row), int(column)
 
     def download_heramap_tile(self, zoom=None, row=None, column=None):
-        return cv2.imdecode(np.asarray(bytearray(urllib.request.urlopen("https://1.aerial.maps.api.here.com/maptile/2.1/maptile/newest/satellite.day/" + str(zoom) + "/" + str(int(column)) + "/" + str(int(row)) + "/" + str(self.config["here_api"]["tile_size"]) + "/png" + "?app_id=" + self.here_app_id + "&app_code=" + self.here_app_code).read()), dtype='uint8'), cv2.IMREAD_COLOR)
+        return cv2.imdecode(np.asarray(bytearray(urllib.request.urlopen("https://2.aerial.maps.ls.hereapi.com/maptile/2.1/maptile/newest/satellite.day/" + str(zoom) + "/" + str(int(column)) + "/" + str(int(row)) + "/" + str(self.config["here_api"]["tile_size"]) + "/png" + "?apiKey=" + self.here_apiKey).read()), dtype='uint8'), cv2.IMREAD_COLOR)
 
     def heremap_to_geographical_coordinate(self, zoom=None, row=None, column=None):
         n = (2 ** zoom)
@@ -93,6 +92,7 @@ class SatSegmentDatasetGenerator:
         return latitude, longitude
 
     def download_overpass_data(self, percentage="0.0.", south_latitude=None, west_longitude=None, north_latitude=None, east_longitude=None):
+
         counter = 1
         queries_count = str(len(self.config["categories"]))
         label_data = {"categories": [], "nodes": {}}
@@ -209,8 +209,8 @@ class SatSegmentDatasetGenerator:
 if __name__ == "__main__":
     # Define arguments with there default values
     ap = argparse.ArgumentParser()
-    ap.add_argument("-app_id", "--here_app_id", required=True, help="Here-Api credentials.")
-    ap.add_argument("-app_code", "--here_app_code", required=True, help="Here-Api credentials.")
+    ap.add_argument("-apikey", "--here_apikey", required=True, help="Here-Api credentials.")
+    # ap.add_argument("-app_code", "--here_app_code", required=True, help="Here-Api credentials.")
     ap.add_argument("-output", "--output_path", required=True, help="Location to store the images.")
     ap.add_argument("-config", "--config_path", required=True, help="Location of the config file.")
     args = vars(ap.parse_args())
@@ -228,4 +228,4 @@ if __name__ == "__main__":
     with open(args["config_path"]) as json_file:
         config = json.load(json_file)
     # Create SatSegmentDatasetGenerator and do job
-    satSegmentDatasetGenerator = SatSegmentDatasetGenerator(here_app_id=args["here_app_id"], here_app_code=args["here_app_code"], output_path=args["output_path"], config=config)
+    satSegmentDatasetGenerator = SatSegmentDatasetGenerator(here_apiKey=args["here_apikey"], output_path=args["output_path"], config=config)
