@@ -210,7 +210,6 @@ if __name__ == "__main__":
     # Define arguments with there default values
     ap = argparse.ArgumentParser()
     ap.add_argument("-apikey", "--here_apikey", required=True, help="Here-Api credentials.")
-    # ap.add_argument("-app_code", "--here_app_code", required=True, help="Here-Api credentials.")
     ap.add_argument("-output", "--output_path", required=True, help="Location to store the images.")
     ap.add_argument("-config", "--config_path", required=True, help="Location of the config file.")
     args = vars(ap.parse_args())
