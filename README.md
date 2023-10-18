@@ -31,7 +31,7 @@ The configuration defines how the dataset is supposed to be generated. The struc
         },
         "zoom_range": {
             "min": 0,
-            "max": 19
+            "max": 15
         }
     },
 /*
