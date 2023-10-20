@@ -69,6 +69,7 @@ class SatSegmentDatasetGenerator:
             print(str(round(percentage_per_tile * counter, 2)) + "%: Draw mask                          ", end = '\r')
             mask = self.draw_mask(percentage=str(round(percentage_per_tile * counter, 2)), tile=satellite_tile, label_data=label_data, left_top=(left_top_latitude, left_top_longitude), right_top=(right_top_latitude, right_top_longitude), left_bottom=(left_bottom_latitude, left_bottom_longitude))
             print(str(round(percentage_per_tile * counter, 2)) + "%: Saving record                                ", end = '\r')
+            # filename = str(here_map_tile_definition[0]) + '_' + str(left_top_latitude) + '_' + str(left_top_longitude)
             cv2.imwrite(self.output_path + "/" + filename + ".jpg", satellite_tile)
             cv2.imwrite(self.output_path + "/" + filename + "_m.jpg", mask)
             print(str(round(percentage_per_tile * counter, 2)) + "%: OK           ", end = '\r')
