@@ -65,7 +65,11 @@ class SatSegmentDatasetGenerator:
             # Calculate left-bottom corner 
             left_bottom_latitude, left_bottom_longitude = self.heremap_to_geographical_coordinate(here_map_tile_definition[0], here_map_tile_definition[1] + 1, here_map_tile_definition[2])
             print(str(round(percentage_per_tile * counter, 2)) + "%: Download osm data          ", end = '\r')
-            label_data = self.download_overpass_data(percentage=str(round(percentage_per_tile * counter, 2)), south_latitude=left_bottom_latitude, west_longitude=left_bottom_longitude, north_latitude=right_top_latitude, east_longitude=right_top_longitude)
+            label_data = self.download_overpass_data(percentage=str(round(percentage_per_tile * counter, 2)), south_latitude=left_bottom_latitude, west_longitude=left_bottom_longitude, north_latitude=right_top_latitude, east_longitude=right_top_longitude,
+                                                     left_top=(left_top_latitude, left_top_longitude), right_top=(right_top_latitude, right_top_longitude), left_bottom=(left_bottom_latitude, left_bottom_longitude))
+            with open(f'jsons/' + filename + '.json', 'w', encoding='utf-8') as f:
+                json.dump(label_data, f, indent=2, ensure_ascii=False)
+
             print(str(round(percentage_per_tile * counter, 2)) + "%: Draw mask                          ", end = '\r')
             mask = self.draw_mask(percentage=str(round(percentage_per_tile * counter, 2)), tile=satellite_tile, label_data=label_data, left_top=(left_top_latitude, left_top_longitude), right_top=(right_top_latitude, right_top_longitude), left_bottom=(left_bottom_latitude, left_bottom_longitude))
             print(str(round(percentage_per_tile * counter, 2)) + "%: Saving record                                ", end = '\r')
@@ -75,6 +79,19 @@ class SatSegmentDatasetGenerator:
             print(str(round(percentage_per_tile * counter, 2)) + "%: OK           ", end = '\r')
             counter += 1
         print("100.00%: Finished                                   ", end = '\r')
+
+    def geographical_coordinate_to_pixel(self, geographical_points=[], left_top=None, right_top=None, left_bottom=None):
+        # долгота longitude
+        width_pp = self.config["here_api"]["tile_size"] / math.sqrt(((right_top[1] - left_top[1]) ** 2) + ((right_top[0] - left_top[0]) ** 2))
+        # широта latitude
+        height_pp = self.config["here_api"]["tile_size"] / math.sqrt(((left_top[1] - left_bottom[1]) ** 2) + ((left_top[0] - left_bottom[0]) ** 2)) 
+        pixel_points = []
+        for point in geographical_points:
+            pixel_points.append([
+                int(round(((point[1] + 180.0) - (left_top[1] + 180.0)) * width_pp)),
+                int(round(((left_top[0] + 90.0) - (point[0] + 90.0)) * height_pp))
+            ])
+        return pixel_points
 
     def calculate_heremap_coordinate(self, latitude=None, longitude=None, zoom=None):
         n = (2 ** zoom)
@@ -92,11 +109,12 @@ class SatSegmentDatasetGenerator:
         longitude = (360.0 * (column / n)) - 180.0
         return latitude, longitude
 
-    def download_overpass_data(self, percentage="0.0.", south_latitude=None, west_longitude=None, north_latitude=None, east_longitude=None):
+    def download_overpass_data(self, percentage="0.0.", south_latitude=None, west_longitude=None, north_latitude=None, east_longitude=None,
+                               left_top=None, right_top=None, left_bottom=None):
 
         counter = 1
         queries_count = str(len(self.config["categories"]))
-        label_data = {"categories": [], "nodes": {}}
+        label_data = {"categories": [], "nodes": {}, "pixels": {}}
         for category in self.config["categories"]:
             dataset_category = {"draw_options":category["draw_options"],  "objects": []}
             print(percentage + "%: Download osm data [" + str(counter) + "/" + queries_count +"]", end = '\r')
@@ -133,7 +151,6 @@ class SatSegmentDatasetGenerator:
             with open('jsons/data_geom.json', 'w', encoding='utf-8') as f:
                 json.dump(response_geom.json(), f, indent=2, ensure_ascii=False)
             print(percentage + "%: Parse osm data [" + str(counter) + "/" + queries_count +"]  ", end = '\r')
-            # print(response.json()['elements'])
             for element in response_body.json()["elements"]:
                 if category["overpass_api_query"].startswith("node["):
                     dataset_category["objects"].append([element["id"]])
@@ -141,9 +158,13 @@ class SatSegmentDatasetGenerator:
                     dataset_category["objects"].append(element["nodes"])
                 elif element["type"] == "node": 
                     label_data["nodes"][element["id"]] = [float(element["lat"]), float(element["lon"])]
+                    points = [(float(element["lat"]), float(element["lon"]))]
+                    points = self.geographical_coordinate_to_pixel(points, left_top, right_top, left_bottom)
+                    label_data['pixels'][element['id']] = points[0]
             label_data["categories"].append(dataset_category)
             counter += 1
         return label_data
+    
 
     def draw_mask(self, percentage="0.0.", tile=None, label_data=None, left_top=None, right_top=None, left_bottom=None):
         mask = np.zeros((self.config["here_api"]["tile_size"], self.config["here_api"]["tile_size"], 3), dtype = "uint8")
@@ -157,6 +178,7 @@ class SatSegmentDatasetGenerator:
                     points = []
                     for id in obj:
                         node = label_data["nodes"][id]
+                        print(node[0], node[1])
                         points.append((node[0],node[1]))
                     points = self.geographical_coordinate_to_pixel(points, left_top=left_top, right_top=right_top, left_bottom=left_bottom)
                     cv2.drawContours(mask, [np.array(points, dtype=np.int32)], -1, color, -1)
@@ -212,17 +234,6 @@ class SatSegmentDatasetGenerator:
                 mask[idx] = color
             counter += 1
         return mask
-
-    def geographical_coordinate_to_pixel(self, geographical_points=[], left_top=None, right_top=None, left_bottom=None):
-        width_pp = self.config["here_api"]["tile_size"] / math.sqrt(((right_top[1] - left_top[1]) ** 2) + ((right_top[0] - left_top[0]) ** 2))
-        height_pp = self.config["here_api"]["tile_size"] / math.sqrt(((left_top[1] - left_bottom[1]) ** 2) + ((left_top[0] - left_bottom[0]) ** 2)) 
-        pixel_points = []
-        for point in geographical_points:
-            pixel_points.append([
-                int(round(((point[1] + 180.0) - (left_top[1] + 180.0)) * width_pp)),
-                int(round(((left_top[0] + 90.0) - (point[0] + 90.0)) * height_pp))
-            ])
-        return pixel_points
 
 if __name__ == "__main__":
     # Define arguments with there default values
