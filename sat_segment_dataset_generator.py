@@ -106,18 +106,35 @@ class SatSegmentDatasetGenerator:
                 if timeout_tries > self.config["overpass_api"]["max_tries"]:
                     raise Exception("Overpass-Api error with code " + str(last_response_code))
                 try:
-                    response = requests.get("http://overpass-api.de/api/interpreter", timeout=(self.config["overpass_api"]["connection_establish_timeout"], self.config["overpass_api"]["response_timeout"]),params={"data": "[out:json];(" + category["overpass_api_query"].replace('{{bbox}}', str(south_latitude - category["expand_view"]) + ',' + str(west_longitude - category["expand_view"]) + ',' + str(north_latitude + category["expand_view"]) + ',' + str(east_longitude + category["expand_view"])) + ");out body;>;out skel qt;"})
-                    if response.status_code != 200:
+                    # [out:json];
+                    # // gather results
+                    # (
+                    # // query part for: “building”
+                    # way["building"]({{coordinates}});
+                    # );
+                    # // print results format geom/body
+                    # out body;
+                    # >;
+                    # out skel qt;
+                    response_body = requests.get("http://overpass-api.de/api/interpreter", timeout=(self.config["overpass_api"]["connection_establish_timeout"], self.config["overpass_api"]["response_timeout"]),params={"data": "[out:json];(" + category["overpass_api_query"].replace('{{bbox}}', str(south_latitude - category["expand_view"]) + ',' + str(west_longitude - category["expand_view"]) + ',' + str(north_latitude + category["expand_view"]) + ',' + str(east_longitude + category["expand_view"])) + ");out body;>;out skel qt;"})
+                    response_geom = requests.get("http://overpass-api.de/api/interpreter", timeout=(self.config["overpass_api"]["connection_establish_timeout"], self.config["overpass_api"]["response_timeout"]),params={"data": "[out:json];(" + category["overpass_api_query"].replace('{{bbox}}', str(south_latitude - category["expand_view"]) + ',' + str(west_longitude - category["expand_view"]) + ',' + str(north_latitude + category["expand_view"]) + ',' + str(east_longitude + category["expand_view"])) + ");out geom;>;out skel qt;"})
+                    if response_body.status_code != 200:
                         timeout_tries += 1
                         print(percentage + "%: Retry download " + str(timeout_tries) + "/" + str(self.config["overpass_api"]["max_tries"]) + " [" + str(counter) + "/" + queries_count +"]", end = '\r')
-                        last_response_code = response.status_code
+                        last_response_code = response_body.status_code
                         raise Exception("retry error")
                     else:
                         break
                 except:
                     pass
+            # Сохраняем два варианта json-ответов overpass-api
+            with open('jsons/data_body.json', 'w', encoding='utf-8') as f:
+                json.dump(response_body.json(), f, indent=2, ensure_ascii=False)
+            with open('jsons/data_geom.json', 'w', encoding='utf-8') as f:
+                json.dump(response_geom.json(), f, indent=2, ensure_ascii=False)
             print(percentage + "%: Parse osm data [" + str(counter) + "/" + queries_count +"]  ", end = '\r')
-            for element in response.json()["elements"]:
+            # print(response.json()['elements'])
+            for element in response_body.json()["elements"]:
                 if category["overpass_api_query"].startswith("node["):
                     dataset_category["objects"].append([element["id"]])
                 if element["type"] == "way":
